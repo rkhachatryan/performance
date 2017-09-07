@@ -2,11 +2,9 @@ package com.github.projectflink.grep;
 
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.common.accumulators.AccumulatorHelper;
-import org.apache.flink.api.common.accumulators.LongCounter;
 import org.apache.flink.api.common.functions.RichFilterFunction;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.api.java.io.TextInputFormat;
 import org.apache.flink.api.java.io.TextValueInputFormat;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.fs.FileSystem;
@@ -67,7 +65,7 @@ public class GrepJobOptimized {
 
 		// execute program
 		JobExecutionResult jobResult = env.execute("Flink Grep benchmark");
-		System.err.println(AccumulatorHelper.getResultsFormated(jobResult.getAllAccumulatorResults()));
+		System.err.println(AccumulatorHelper.getResultsFormatted(jobResult.getAllAccumulatorResults()));
 	}
 
 /*

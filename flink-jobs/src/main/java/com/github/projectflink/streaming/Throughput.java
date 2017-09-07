@@ -2,15 +2,14 @@ package com.github.projectflink.streaming;
 
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.MapFunction;
-import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.streaming.api.checkpoint.Checkpointed;
 import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunction;
 import org.apache.flink.util.Collector;
+
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -143,7 +142,7 @@ public class Throughput {
 
 		DataStream<Type> source = see.addSource(new Source(pt) );
 
-		DataStream<Type> repartitioned = source.partitionByHash(0);
+		DataStream<Type> repartitioned = source.keyBy(0);
 		for(int i = 0; i < pt.getInt("repartitions", 1) - 1;i++) {
 			repartitioned = repartitioned.map(new MapFunction<Type, Type>() {
 				@Override
@@ -152,7 +151,7 @@ public class Throughput {
 					out.f0++;
 					return out;
 				}
-			}).partitionByHash(0);
+			}).keyBy(0);
 		}
 		repartitioned.flatMap(new FlatMapFunction<Type, Integer>() {
 			public int host = -2;

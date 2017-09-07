@@ -1,16 +1,17 @@
 package com.github.projectflink.streaming;
 
-import com.dataartisans.flink.example.eventpattern.Event;
-import com.dataartisans.flink.example.eventpattern.EventsGenerator;
-import com.dataartisans.flink.example.eventpattern.StateMachineMapper;
-import com.dataartisans.flink.example.eventpattern.kafka.EventDeSerializer;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunction;
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer;
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaProducer09;
+
+import com.dataartisans.flink.example.eventpattern.Event;
+import com.dataartisans.flink.example.eventpattern.EventsGenerator;
+import com.dataartisans.flink.example.eventpattern.StateMachineMapper;
+import com.dataartisans.flink.example.eventpattern.kafka.EventDeSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -101,7 +102,7 @@ public class KafkaGenerator {
 		});
 
 		// run the state machine here as well to see illegal transitions
-		src.partitionByHash(new KeySelector<Event, Integer>() {
+		src.keyBy(new KeySelector<Event, Integer>() {
 			private static final long serialVersionUID = 1L;
 
 			@Override
@@ -123,7 +124,7 @@ public class KafkaGenerator {
 //			props.put(PartitionerWrapper.SERIALIZED_WRAPPER_NAME, part);
 //		}
 //
-		src.addSink(new FlinkKafkaProducer<Event>(pt.getRequired("topic"), new EventDeSerializer(), pt.getProperties()));
+		src.addSink(new FlinkKafkaProducer09<Event>(pt.getRequired("topic"), new EventDeSerializer(), pt.getProperties()));
 
 
 		see.execute();

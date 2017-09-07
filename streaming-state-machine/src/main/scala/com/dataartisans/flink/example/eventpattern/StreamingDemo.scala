@@ -16,17 +16,17 @@
 
 package com.dataartisans.flink.example.eventpattern
 
-import java.util.Properties
+import java.util
+import java.util.{Collections, Properties}
 
 import com.dataartisans.flink.example.eventpattern.kafka.EventDeSerializer
-
 import org.apache.flink.api.common.functions.FlatMapFunction
 import org.apache.flink.api.java.utils.ParameterTool
-import org.apache.flink.streaming.api.checkpoint.Checkpointed
+import org.apache.flink.streaming.api.checkpoint.ListCheckpointed
 import org.apache.flink.streaming.api.scala._
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer
+import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer09
 import org.apache.flink.util.Collector
-import org.slf4j.{LoggerFactory, Logger}
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
 
@@ -68,12 +68,12 @@ object StreamingDemo {
                                                                 new EventDeSerializer(),
                                                                 new ConsumerConfig(props))) */
 
-   val stream = env.addSource(new FlinkKafkaConsumer[Event](pt.getRequired("topic"), new EventDeSerializer() ,props))
+   val stream = env.addSource(new FlinkKafkaConsumer09[Event](pt.getRequired("topic"), new EventDeSerializer() ,props))
 
     stream
       // partition on the address to make sure equal addresses
       // end up in the same state machine flatMap function
-      .partitionByHash("sourceAddress")
+      .keyBy("sourceAddress")
       
       // the function that evaluates the state machine over the sequence of events
       .flatMap(new StateMachineMapper(pt))
@@ -91,7 +91,7 @@ object StreamingDemo {
  * events are consistent with the current state of the state machine. If the event is not
  * consistent with the current state, the function produces an alert.
  */
-class StateMachineMapper(val pt: ParameterTool) extends FlatMapFunction[Event, String] with Checkpointed[mutable.HashMap[Int, State]] {
+class StateMachineMapper(val pt: ParameterTool) extends FlatMapFunction[Event, String] with ListCheckpointed[mutable.HashMap[Int, State]] {
 
   private val LOG: Logger = LoggerFactory.getLogger(classOf[StateMachineMapper])
   
@@ -139,13 +139,13 @@ class StateMachineMapper(val pt: ParameterTool) extends FlatMapFunction[Event, S
 
   /**
    * Draws a snapshot of the function's state.
-   * 
+   *
    * @param checkpointId The ID of the checkpoint.
    * @param timestamp The timestamp when the checkpoint was instantiated.
    * @return The state to be snapshotted, here the hash map of state machines.
    */
-  override def snapshotState(checkpointId: Long, timestamp: Long): mutable.HashMap[Int, State] = {
-    states
+  override def snapshotState(checkpointId: Long, timestamp: Long): util.List[mutable.HashMap[Int, State]] = {
+    Collections.singletonList(states)
   }
 
   /**
@@ -153,7 +153,9 @@ class StateMachineMapper(val pt: ParameterTool) extends FlatMapFunction[Event, S
    * 
    * @param state The state to be restored.
    */
-  override def restoreState(state: mutable.HashMap[Int, State]): Unit = {
-    states ++= state
+  override def restoreState(state: util.List[mutable.HashMap[Int, State]]): Unit = {
+    if (!state.isEmpty) {
+      states ++= state.get(0)
+    }
   }
 }

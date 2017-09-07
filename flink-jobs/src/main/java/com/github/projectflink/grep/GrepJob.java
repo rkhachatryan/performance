@@ -69,7 +69,7 @@ public class GrepJob {
 
 		// execute program
 		JobExecutionResult jobResult = env.execute("Flink Grep benchmark");
-		System.err.println(AccumulatorHelper.getResultsFormated(jobResult.getAllAccumulatorResults()));
+		System.err.println(AccumulatorHelper.getResultsFormatted(jobResult.getAllAccumulatorResults()));
 	}
 
 /*
