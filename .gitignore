@@ -13,3 +13,4 @@ tmp
 *.swp
 *.jar
 .DS_Store
+flink-jobs/src/main/java/com/github/projectflink/avro/generated/
