@@ -11,14 +11,10 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunction;
 import org.apache.flink.util.Collector;
 
-import org.junit.Assert;
-import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.Collections;
 import java.util.List;
 
@@ -52,32 +48,8 @@ public class Throughput {
 		}
 	}
 
-	@Test
-	public void testMaster() {
-		Assert.assertEquals(-1, convertHostnameToInt("robert-streaming-m.c.astral-sorter-757.internal"));
-		Assert.assertEquals(30, convertHostnameToInt("robert-streaming-w-30.c.astral-sorter-757.internal"));
-		Assert.assertEquals(3, convertHostnameToInt("robert-streaming-w-3.c.astral-sorter-757.internal"));
-		Assert.assertEquals(11, convertHostnameToInt("robert-streaming-w-11"));
-		Assert.assertEquals(1, convertHostnameToInt("robert-streaming-w-1"));
-
-	}
-
 	public static int convertHostnameToInt(String host) {
-		// allow me to develop locally
-		if(host.equals("robert-da") || host.equals("robert-tower")) return 0;
-
-		Pattern p = Pattern.compile("robert-streaming-(m|w-([0-9]+))(.c.astral-sorter-757.internal)?");
-		Matcher m = p.matcher(host);
-		if(m.matches()){
-			if(m.group(1).startsWith("m")) {
-				return -1; // that's the master machine
-			} else {
-				String id = m.group(2);
-				return Integer.valueOf(id);
-			}
-		} else {
-			throw new RuntimeException("Unable to convert host "+host);
-		}
+		return host.hashCode();
 	}
 
 	public static class Source extends RichParallelSourceFunction<Type> implements ListCheckpointed<Long> {
@@ -169,7 +141,7 @@ public class Throughput {
 		repartitioned.flatMap(new FlatMapFunction<Type, Integer>() {
 			private static final long serialVersionUID = -4881110695631095859L;
 
-			public int host = -2;
+			Integer host = null;
 			long received = 0;
 			long start = 0;
 			long logfreq = pt.getInt("logfreq", DEFAULT_LOG_FREQUENCY);
@@ -178,7 +150,7 @@ public class Throughput {
 
 			@Override
 			public void flatMap(Type element, Collector<Integer> collector) throws Exception {
-				if(host == -2) {
+				if(host == null) {
 					host = convertHostnameToInt(InetAddress.getLocalHost().getHostName());
 				}
 				if (start == 0) {
