@@ -36,9 +36,10 @@ public class AnalyzeTool {
 		Scanner sc = new Scanner(new File(file));
 
 		String l;
-		Pattern latencyPattern = Pattern.compile(".*Latency ([0-9]+) ms.*");
-		Pattern throughputPattern = Pattern.compile(".*That's ([0-9.]+) elements\\/second\\/core.*");
-		Pattern hostPattern = Pattern.compile("Container: .* on (.+).c.astral-sorter-757..*");
+//		Pattern latencyPattern = Pattern.compile(".*That's [0-9.]+ elements\\/second\\/core with an average latency of ([0-9.]+) ms.*");
+		Pattern latencyPattern = Pattern.compile(".*Latency ([0-9.]+) ms from machine.*");
+		Pattern throughputPattern = Pattern.compile(".*That's ([0-9.]+) elements\\/second\\/core with an average latency of [0-9.]+ ms.*");
+		Pattern hostPattern = Pattern.compile(".*TaskManager will use hostname\\/address '(.+)'.*");
 		Pattern stormHostPattern = Pattern.compile(".*Client environment:host.name=(.+).c.astral-sorter-757..*");
 
 		DescriptiveStatistics latencies = new DescriptiveStatistics();
@@ -119,34 +120,35 @@ public class AnalyzeTool {
 			System.err.println("Mean throughput " + entry.getValue().getMean());
 		}
 
-		Collections.sort(orderedPerHostLatency, new Comparator<Map.Entry<String, DescriptiveStatistics>>() {
-			@Override
-			public int compare(Map.Entry<String, DescriptiveStatistics> o1, Map.Entry<String, DescriptiveStatistics> o2) {
-				if (o1.getValue().getMean() < o2.getValue().getMean()) {
-					return 1;
-				} else {
-					return -1;
-				}
-			}
-		});
-
-		List<Map.Entry<String, DescriptiveStatistics>> statsToIgnore = orderedPerHostLatency.subList(0, 2);
-		List<String> toIgnore = new ArrayList<String>();
-		System.err.println("============= HOSTS TO IGNORE (num: "+statsToIgnore.size()+") ============== ");
-		for(Map.Entry<String, DescriptiveStatistics> entry : statsToIgnore) {
-			System.err.println("====== "+entry.getKey()+" (entries: "+entry.getValue().getN()+") =======");
-			System.err.println("Mean latency " + entry.getValue().getMean());
-			System.err.println("Median latency " + entry.getValue().getPercentile(50));
-			toIgnore.add(entry.getKey());
-		}
-
-		Result finalResult = analyze(args[0], toIgnore);
-		latencies = finalResult.latencies;
-		throughputs = finalResult.throughputs;
-
-		System.out.println("-2-machines;" + latencies.getMean() + ";" + latencies.getPercentile(50) + ";" + latencies.getPercentile(90) + ";" + latencies.getPercentile(95) + ";" + latencies.getPercentile(99)+ ";" + throughputs.getMean() + ";" + throughputs.getMax() + ";" + latencies.getN() + ";" + throughputs.getN());
-
-
+//		Collections.sort(orderedPerHostLatency, new Comparator<Map.Entry<String, DescriptiveStatistics>>() {
+//			@Override
+//			public int compare(Map.Entry<String, DescriptiveStatistics> o1, Map.Entry<String, DescriptiveStatistics> o2) {
+//				if (o1.getValue().getMean() < o2.getValue().getMean()) {
+//					return 1;
+//				} else {
+//					return -1;
+//				}
+//			}
+//		});
+//
+//		List<String> toIgnore = new ArrayList<>();
+//		final int machinesToRemove = orderedPerHostLatency.size() > 2 ? 2 : 0;
+//		if (machinesToRemove > 0) {
+//			List<Map.Entry<String, DescriptiveStatistics>> statsToIgnore = orderedPerHostLatency.subList(0, machinesToRemove);
+//			System.err.println("============= HOSTS TO IGNORE (num: " + statsToIgnore.size() + ") ============== ");
+//			for (Map.Entry<String, DescriptiveStatistics> entry : statsToIgnore) {
+//				System.err.println("====== " + entry.getKey() + " (entries: " + entry.getValue().getN() + ") =======");
+//				System.err.println("Mean latency " + entry.getValue().getMean());
+//				System.err.println("Median latency " + entry.getValue().getPercentile(50));
+//				toIgnore.add(entry.getKey());
+//			}
+//		}
+//
+//		Result finalResult = analyze(args[0], toIgnore);
+//		latencies = finalResult.latencies;
+//		throughputs = finalResult.throughputs;
+//
+//		System.out.println("-" + machinesToRemove + "-machines;" + latencies.getMean() + ";" + latencies.getPercentile(50) + ";" + latencies.getPercentile(90) + ";" + latencies.getPercentile(95) + ";" + latencies.getPercentile(99)+ ";" + throughputs.getMean() + ";" + throughputs.getMax() + ";" + latencies.getN() + ";" + throughputs.getN());
 
 	}
 }
