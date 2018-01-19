@@ -2,9 +2,10 @@ package com.github.projectflink.streaming;
 
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.api.java.utils.ParameterTool;
-import org.apache.flink.streaming.api.checkpoint.Checkpointed;
+import org.apache.flink.streaming.api.checkpoint.ListCheckpointed;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunction;
@@ -18,6 +19,8 @@ import org.slf4j.LoggerFactory;
 import java.net.InetAddress;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.Collections;
+import java.util.List;
 
 public class Throughput {
 
@@ -28,6 +31,9 @@ public class Throughput {
 			Long, // timestamp
 			byte[] // some payload
 			> {
+
+		private static final long serialVersionUID = -1625207099642006860L;
+
 		public Type(Long value0, Integer value1, Long value2, byte[] value3) {
 			super(value0, value1, value2, value3);
 		}
@@ -68,7 +74,8 @@ public class Throughput {
 		}
 	}
 
-	public static class Source extends RichParallelSourceFunction<Type> implements Checkpointed<Long> {
+	public static class Source extends RichParallelSourceFunction<Type> implements ListCheckpointed<Long> {
+		private static final long serialVersionUID = -9116320247501922636L;
 
 		final ParameterTool pt;
 		byte[] payload;
@@ -115,13 +122,13 @@ public class Throughput {
 		}
 
 		@Override
-		public Long snapshotState(long l, long l1) throws Exception {
-			return id;
+		public List<Long> snapshotState(long l, long l1) throws Exception {
+			return Collections.singletonList(id);
 		}
 
 		@Override
-		public void restoreState(Long aLong) {
-			this.id = aLong;
+		public void restoreState(List<Long> state) throws Exception {
+			this.id = state.isEmpty() ? 0 : state.get(0);
 		}
 	}
 
@@ -130,7 +137,7 @@ public class Throughput {
 
 		StreamExecutionEnvironment see = StreamExecutionEnvironment.getExecutionEnvironment();
 		see.getConfig().setGlobalJobParameters(pt);
-		see.setNumberOfExecutionRetries(0);
+		see.setRestartStrategy(RestartStrategies.noRestart());
 
 		if(pt.has("timeout")) {
 			see.setBufferTimeout(pt.getLong("timeout"));
@@ -154,6 +161,8 @@ public class Throughput {
 			}).keyBy(0);
 		}
 		repartitioned.flatMap(new FlatMapFunction<Type, Integer>() {
+			private static final long serialVersionUID = -4881110695631095859L;
+
 			public int host = -2;
 			long received = 0;
 			long start = 0;

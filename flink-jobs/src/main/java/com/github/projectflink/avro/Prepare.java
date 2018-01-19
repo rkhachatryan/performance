@@ -1,12 +1,12 @@
 package com.github.projectflink.avro;
 
-import com.github.projectflink.avro.generated.AvroLineitem;
-import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.api.java.io.AvroOutputFormat;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.formats.avro.AvroOutputFormat;
+
+import com.github.projectflink.avro.generated.AvroLineitem;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;

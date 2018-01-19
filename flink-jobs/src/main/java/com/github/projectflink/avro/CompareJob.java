@@ -1,13 +1,14 @@
 package com.github.projectflink.avro;
 
-import com.github.projectflink.avro.generated.AvroLineitem;
 import org.apache.flink.api.common.functions.CoGroupFunction;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.api.java.io.AvroInputFormat;
 import org.apache.flink.api.java.io.DiscardingOutputFormat;
 import org.apache.flink.core.fs.Path;
+import org.apache.flink.formats.avro.AvroInputFormat;
 import org.apache.flink.util.Collector;
+
+import com.github.projectflink.avro.generated.AvroLineitem;
 
 import java.util.Iterator;
 

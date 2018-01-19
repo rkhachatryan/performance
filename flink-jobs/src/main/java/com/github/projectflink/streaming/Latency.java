@@ -4,22 +4,27 @@ import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.java.tuple.Tuple5;
 import org.apache.flink.api.java.utils.ParameterTool;
-import org.apache.flink.streaming.api.checkpoint.Checkpointed;
+import org.apache.flink.streaming.api.checkpoint.ListCheckpointed;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunction;
 import org.apache.flink.util.Collector;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class Latency {
 	private static final Logger LOG = LoggerFactory.getLogger(Latency.class);
 
 	public static class T extends Tuple5<Long, String, Long, byte[], ArrayList<String>> {
+		private static final long serialVersionUID = 8384943526732634125L;
+
 		public T() {
 
 		}
@@ -28,7 +33,8 @@ public class Latency {
 		}
 	}
 
-	public static class Source extends RichParallelSourceFunction<T> implements Checkpointed<Long> {
+	public static class Source extends RichParallelSourceFunction<Type> implements ListCheckpointed<Long> {
+		private static final long serialVersionUID = 2915726091221740739L;
 
 		final ParameterTool pt;
 		byte[] payload;
@@ -77,16 +83,15 @@ public class Latency {
 		}
 
 		@Override
-		public Long snapshotState(long l, long l1) throws Exception {
-			return id;
+		public List<Long> snapshotState(long l, long l1) throws Exception {
+			return Collections.singletonList(id);
 		}
 
 		@Override
-		public void restoreState(Long aLong) {
-			this.id = aLong;
+		public void restoreState(List<Long> state) throws Exception {
+			this.id = state.isEmpty() ? 0 : state.get(0);
 		}
 	}
-
 
 	public static void main(String[] args) throws Exception {
 		final ParameterTool pt = ParameterTool.fromArgs(args);
@@ -106,6 +111,8 @@ public class Latency {
 		DataStream<T> part = in//.partitionByHash(0);
 		.rebalance();
 		part.map(new MapFunction<T, T>() {
+			private static final long serialVersionUID = 1796784967031892115L;
+
 			public String host = null;
 
 			@Override
@@ -118,6 +125,8 @@ public class Latency {
 				return longIntegerLongTuple4;
 			}
 		}).rebalance().map(new MapFunction<T, T>() {
+			private static final long serialVersionUID = 1726686944574451242L;
+
 			public String host = null;
 
 			@Override
@@ -130,6 +139,8 @@ public class Latency {
 				return longIntegerLongTuple4;
 			}
 		}).rebalance().flatMap(new FlatMapFunction<T, Integer>() {
+			private static final long serialVersionUID = 1445056605150936004L;
+
 			public String host = null;
 			long received = 0;
 			long start = 0;
