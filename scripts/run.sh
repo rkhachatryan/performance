@@ -54,11 +54,15 @@ kill_on_yarn() {
 }
 
 getLogsFor() {
+	name=$1
+	appid=$2
 	sleep 30
-	yarn logs -applicationId $1 > logs/${RUNNAME}-$1
+	yarn logs -applicationId $appid > logs/${RUNNAME}-${name}-${appid}
 }
 analyzeLogs() {
-	java -cp "${ANALYZE_JAR}" com.github.projectflink.common.AnalyzeTool logs/${RUNNAME}-$1 >> ${LOG}
+	name=$1
+	appid=$2
+	java -cp "${ANALYZE_JAR}" com.github.projectflink.common.AnalyzeTool logs/${RUNNAME}-${name}-${appid} >> ${LOG}
 }
 
 function experiment() {
@@ -69,8 +73,8 @@ function experiment() {
 	duration ${dur}
 	APPID=`kill_on_yarn`
 
-	getLogsFor ${name}-${APPID}
-	analyzeLogs ${name}-${APPID}
+	getLogsFor ${name} ${APPID}
+	analyzeLogs ${name} ${APPID}
 }
 
 mkdir -p logs
