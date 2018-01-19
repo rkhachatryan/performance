@@ -94,8 +94,6 @@ for nodes in $NODES; do
 	experiment throughput1 $nodes $DURATION
 done
 
-exit
-
 # test throughput and the impact of the timeouts on the throughput and latency
 
 REPART=2
