@@ -22,13 +22,18 @@ import java.util.List;
 public class Latency {
 	private static final Logger LOG = LoggerFactory.getLogger(Latency.class);
 
-	public static class T extends Tuple5<Long, String, Long, byte[], ArrayList<String>> {
+	static final int DEFAULT_PAYLOAD_SIZE = 12;
+	static final int DEFAULT_DELAY = 0;
+	static final int DEFAULT_LATENCY_FREQUENCY = 1_000_000;
+	static final int DEFAULT_LOG_FREQUENCY = 1000;
+
+	public static class Type extends Tuple5<Long, String, Long, byte[], ArrayList<String>> {
 		private static final long serialVersionUID = 8384943526732634125L;
 
-		public T() {
-
+		public Type() {
 		}
-		public T(Long value0, String value1, Long value2, byte[] value3, ArrayList<String> v4) {
+
+		public Type(Long value0, String value1, Long value2, byte[] value3, ArrayList<String> v4) {
 			super(value0, value1, value2, value3, v4);
 		}
 	}
@@ -44,13 +49,13 @@ public class Latency {
 
 		public Source(ParameterTool pt) {
 			this.pt = pt;
-			payload = new byte[pt.getInt("payload")];
+			payload = new byte[pt.getInt("payload", DEFAULT_PAYLOAD_SIZE)];
 		}
 
 		@Override
-		public void run(SourceContext<T> sourceContext) throws Exception {
-			int delay = pt.getInt("delay");
-			int latFreq = pt.getInt("latencyFreq");
+		public void run(SourceContext<Type> sourceContext) throws Exception {
+			int delay = pt.getInt("delay", DEFAULT_DELAY);
+			int latFreq = pt.getInt("latencyFreq", DEFAULT_LATENCY_FREQUENCY);
 			int nextlat = 1000;
 			String host = InetAddress.getLocalHost().getHostName();
 			LOG.info("Starting data source on host "+host);
@@ -72,7 +77,7 @@ public class Latency {
 				}
 				ArrayList<String> hosts = new ArrayList<String>(3);
 				hosts.add(host);
-				sourceContext.collect(new T(id++, host, time, payload, hosts));
+				sourceContext.collect(new Type(id++, host, time, payload, hosts));
 				time = 0;
 			}
 		}
@@ -107,16 +112,16 @@ public class Latency {
 			see.enableCheckpointing(pt.getLong("ft"));
 		}
 
-		DataStreamSource<T> in = see.addSource(new Source(pt));
-		DataStream<T> part = in//.partitionByHash(0);
+		DataStreamSource<Type> in = see.addSource(new Source(pt));
+		DataStream<Type> part = in//.partitionByHash(0);
 		.rebalance();
-		part.map(new MapFunction<T, T>() {
+		part.map(new MapFunction<Type, Type>() {
 			private static final long serialVersionUID = 1796784967031892115L;
 
 			public String host = null;
 
 			@Override
-			public T map(T longIntegerLongTuple4) throws Exception {
+			public Type map(Type longIntegerLongTuple4) throws Exception {
 				if (host == null) {
 					host = InetAddress.getLocalHost().getHostName();
 				}
@@ -124,13 +129,13 @@ public class Latency {
 				//longIntegerLongTuple4.f0++;
 				return longIntegerLongTuple4;
 			}
-		}).rebalance().map(new MapFunction<T, T>() {
+		}).rebalance().map(new MapFunction<Type, Type>() {
 			private static final long serialVersionUID = 1726686944574451242L;
 
 			public String host = null;
 
 			@Override
-			public T map(T longIntegerLongTuple4) throws Exception {
+			public Type map(Type longIntegerLongTuple4) throws Exception {
 				if (host == null) {
 					host = InetAddress.getLocalHost().getHostName();
 				}
@@ -138,18 +143,18 @@ public class Latency {
 			//	longIntegerLongTuple4.f0++;
 				return longIntegerLongTuple4;
 			}
-		}).rebalance().flatMap(new FlatMapFunction<T, Integer>() {
+		}).rebalance().flatMap(new FlatMapFunction<Type, Integer>() {
 			private static final long serialVersionUID = 1445056605150936004L;
 
 			public String host = null;
 			long received = 0;
 			long start = 0;
-			long logfreq = pt.getInt("logfreq");
+			long logfreq = pt.getInt("logfreq", DEFAULT_LOG_FREQUENCY);
 			long lastLog = -1;
 			long lastElements = 0;
 
 			@Override
-			public void flatMap(T element, Collector<Integer> collector) throws Exception {
+			public void flatMap(Type element, Collector<Integer> collector) throws Exception {
 				if (host == null) {
 					host = InetAddress.getLocalHost().getHostName();
 				}

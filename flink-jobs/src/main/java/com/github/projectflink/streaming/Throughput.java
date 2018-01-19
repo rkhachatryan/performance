@@ -26,6 +26,12 @@ public class Throughput {
 
 	private static final Logger LOG = LoggerFactory.getLogger(Throughput.class);
 
+	static final int DEFAULT_PAYLOAD_SIZE = 12;
+	static final int DEFAULT_DELAY = 0;
+	static final int DEFAULT_LATENCY_FREQUENCY = 1_000_000;
+	static final int DEFAULT_SLEEP_FREQUENCY = 0;
+	static final int DEFAULT_LOG_FREQUENCY = 1000;
+
 	public static class Type extends Tuple4<Long, // sequence number from generator instance
 			Integer,  // host ID on GCE
 			Long, // timestamp
@@ -85,15 +91,15 @@ public class Throughput {
 
 		public Source(ParameterTool pt) {
 			this.pt = pt;
-			payload = new byte[pt.getInt("payload")];
+			payload = new byte[pt.getInt("payload", DEFAULT_PAYLOAD_SIZE)];
 		}
 
 		@Override
 		public void run(SourceContext<Type> sourceContext) throws Exception {
-			int delay = pt.getInt("delay");
-			int latFreq = pt.getInt("latencyFreq");
+			int delay = pt.getInt("delay", DEFAULT_DELAY);
+			int latFreq = pt.getInt("latencyFreq", DEFAULT_LATENCY_FREQUENCY);
 			int nextlat = 1000;
-			int sleepFreq = pt.getInt("sleepFreq");
+			int sleepFreq = pt.getInt("sleepFreq", DEFAULT_SLEEP_FREQUENCY);
 		//	String host = InetAddress.getLocalHost().getHostName();
 			int host = convertHostnameToInt(InetAddress.getLocalHost().getHostName());
 
@@ -166,7 +172,7 @@ public class Throughput {
 			public int host = -2;
 			long received = 0;
 			long start = 0;
-			long logfreq = pt.getInt("logfreq");
+			long logfreq = pt.getInt("logfreq", DEFAULT_LOG_FREQUENCY);
 			long lastLog = -1;
 			long lastElements = 0;
 
@@ -189,7 +195,7 @@ public class Throughput {
 							received,
 							sinceSec,
 							received / sinceSec,
-							(received * (8 + 8 + 4 + pt.getInt("payload"))) / 1024 / 1024 / 1024);
+							(received * (8 + 8 + 4 + pt.getInt("payload", DEFAULT_PAYLOAD_SIZE))) / 1024 / 1024 / 1024);
 
 					// throughput for the last "logfreq" elements
 					if(lastLog == -1) {
