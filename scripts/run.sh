@@ -7,12 +7,13 @@ ANALYZE_JAR=${4:-perf-common-0.1-SNAPSHOT-jar-with-dependencies.jar}
 
 NODES=${5:-10 20 30}
 BUFFER_TIMEOUTS_THROUGHPUT=${6:-0 5 10}
-BUFFER_TIMEOUTS_LATENCY=${6:-0 10 100}
+BUFFER_TIMEOUTS_LATENCY=${7:-0 10 100}
+CREDIT_BASED_ENABLED=${8:-true}
 
 LOG="run-log-${RUNNAME}"
 
 export HADOOP_CONF_DIR=/etc/hadoop/conf
-CREDIT_BASED=true
+CREDIT_BASED_ENABLED=true
 BUFFER_TIMEOUT=100
 REPART=1
 SOURCE_DELAY=0 # in ms
@@ -28,7 +29,7 @@ start_job() {
 	echo "Starting job on YARN with $nodes workers and a buffer timeout of $BUFFER_TIMEOUT ms (source delay $SOURCE_DELAY)"
 	PARA=$(($1*$SLOTS))
 	CLASS="com.github.projectflink.streaming.Throughput"
-	"${FLINK_BIN}" run -m yarn-cluster -yn $1 -yst -yD taskmanager.network.credit-based.enabled=$CREDIT_BASED -yjm 768 -ytm 3072 -ys $SLOTS -yd -p $PARA -c $CLASS "${JOB_JAR}" $CHECKPOINTING_INTERVAL --sleepFreq $SOURCE_DELAY_FREQ --repartitions $REPART --timeout $BUFFER_TIMEOUT --payload $PAYLOAD_SIZE --delay $SOURCE_DELAY --logfreq $LOG_FREQ --latencyFreq $LATENCY_MEASURE_FREQ | tee lastJobOutput
+	"${FLINK_BIN}" run -m yarn-cluster -yn $1 -yst -yD taskmanager.network.credit-based.enabled=$CREDIT_BASED_ENABLED -yjm 768 -ytm 3072 -ys $SLOTS -yd -p $PARA -c $CLASS "${JOB_JAR}" $CHECKPOINTING_INTERVAL --sleepFreq $SOURCE_DELAY_FREQ --repartitions $REPART --timeout $BUFFER_TIMEOUT --payload $PAYLOAD_SIZE --delay $SOURCE_DELAY --logfreq $LOG_FREQ --latencyFreq $LATENCY_MEASURE_FREQ | tee lastJobOutput
 }
 
 append() {
