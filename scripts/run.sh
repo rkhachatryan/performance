@@ -6,9 +6,10 @@ JOB_JAR=${3:-flink-jobs-0.1-SNAPSHOT.jar}
 ANALYZE_JAR=${4:-perf-common-0.1-SNAPSHOT-jar-with-dependencies.jar}
 
 NODES=${5:-10 20 30}
-BUFFER_TIMEOUTS_THROUGHPUT=${6:-0 5 10}
-BUFFER_TIMEOUTS_LATENCY=${7:-0 10 100}
-CREDIT_BASED_ENABLED=${8:-true}
+SLOTS=${6:-4}
+BUFFER_TIMEOUTS_THROUGHPUT=${7:-0 5 10}
+BUFFER_TIMEOUTS_LATENCY=${8:-0 10 100}
+CREDIT_BASED_ENABLED=${9:-true}
 
 LOG="run-log-${RUNNAME}"
 
@@ -22,14 +23,14 @@ LATENCY_MEASURE_FREQ=100000 # every this many records
 LOG_FREQ=100000 # every this many records
 PAYLOAD_SIZE=12
 CHECKPOINTING_INTERVAL=""
-SLOTS=4
 start_job() {
 	nodes=$1
-	echo -n "$nodes;$SLOTS;$REPART;$CHECKPOINTING_INTERVAL;$BUFFER_TIMEOUT;$SOURCE_DELAY;$SOURCE_DELAY_FREQ;$LATENCY_MEASURE_FREQ;$LOG_FREQ;$PAYLOAD_SIZE;" >> $LOG
+	slots=$2
+	echo -n "$nodes;$slots;$REPART;$CHECKPOINTING_INTERVAL;$BUFFER_TIMEOUT;$SOURCE_DELAY;$SOURCE_DELAY_FREQ;$LATENCY_MEASURE_FREQ;$LOG_FREQ;$PAYLOAD_SIZE;" >> $LOG
 	echo "Starting job on YARN with $nodes workers and a buffer timeout of $BUFFER_TIMEOUT ms (source delay $SOURCE_DELAY)"
-	PARA=$(($1*$SLOTS))
+	PARA=$(($1*$slots))
 	CLASS="com.github.projectflink.streaming.Throughput"
-	"${FLINK_BIN}" run -m yarn-cluster -yn $1 -yst -yD taskmanager.network.credit-based.enabled=$CREDIT_BASED_ENABLED -yjm 768 -ytm 3072 -ys $SLOTS -yd -p $PARA -c $CLASS "${JOB_JAR}" $CHECKPOINTING_INTERVAL --sleepFreq $SOURCE_DELAY_FREQ --repartitions $REPART --timeout $BUFFER_TIMEOUT --payload $PAYLOAD_SIZE --delay $SOURCE_DELAY --logfreq $LOG_FREQ --latencyFreq $LATENCY_MEASURE_FREQ | tee lastJobOutput
+	"${FLINK_BIN}" run -m yarn-cluster -yn $1 -yst -yD taskmanager.network.credit-based.enabled=$CREDIT_BASED_ENABLED -yjm 768 -ytm 3072 -ys $slots -yd -p $PARA -c $CLASS "${JOB_JAR}" $CHECKPOINTING_INTERVAL --sleepFreq $SOURCE_DELAY_FREQ --repartitions $REPART --timeout $BUFFER_TIMEOUT --payload $PAYLOAD_SIZE --delay $SOURCE_DELAY --logfreq $LOG_FREQ --latencyFreq $LATENCY_MEASURE_FREQ | tee lastJobOutput
 }
 
 append() {
@@ -68,8 +69,9 @@ analyzeLogs() {
 function experiment() {
 	name=$1
 	nodes=$2
-	dur=$3
-	start_job ${nodes}
+	slots=$3
+	dur=$4
+	start_job ${nodes} ${slots}
 	duration ${dur}
 	APPID=`kill_on_yarn`
 
@@ -88,10 +90,12 @@ DURATION=300 # 5min
 REPART=1 # only one re-partitioning via a (hashing) key-by
 BUFFER_TIMEOUT=5 # default 5ms
 
-for nodes in $NODES; do
-	experiment throughput1 $nodes $DURATION
-	experiment throughput1 $nodes $DURATION
-	experiment throughput1 $nodes $DURATION
+for slots in $SLOTS; do
+	for nodes in $NODES; do
+		experiment throughput1 $nodes $slots $DURATION
+		experiment throughput1 $nodes $slots $DURATION
+		experiment throughput1 $nodes $slots $DURATION
+	done
 done
 
 # test throughput and the impact of the timeouts on the throughput and latency
@@ -100,10 +104,12 @@ REPART=2
 
 for CHECKPOINTING_INTERVAL in "" " --ft 1000 "; do
 	for BUFFER_TIMEOUT in $BUFFER_TIMEOUTS_THROUGHPUT; do
-		for nodes in $NODES; do
-			experiment throughput2 $nodes $DURATION
-			experiment throughput2 $nodes $DURATION
-			experiment throughput2 $nodes $DURATION
+		for slots in $SLOTS; do
+			for nodes in $NODES; do
+				experiment throughput2 $nodes $slots $DURATION
+				experiment throughput2 $nodes $slots $DURATION
+				experiment throughput2 $nodes $slots $DURATION
+			done
 		done
 	done
 done
@@ -113,13 +119,15 @@ SOURCE_DELAY=100 # in ms
 SOURCE_DELAY_FREQ=1 # every this many records
 for BUFFER_TIMEOUT in $BUFFER_TIMEOUTS_LATENCY; do
   for SOURCE_DELAY in 1 5 10 50 100; do
-	for nodes in $NODES; do
-		# roughly once per second
-		LOG_FREQ=$(($SOURCE_DELAY_FREQ*1000/$SOURCE_DELAY)) # every this many records
-		LATENCY_MEASURE_FREQ=$(($LOG_FREQ/5))
-		experiment latency2 $nodes $DURATION
-		experiment latency2 $nodes $DURATION
-		experiment latency2 $nodes $DURATION
+	for slots in $SLOTS; do
+		for nodes in $NODES; do
+			# roughly once per second
+			LOG_FREQ=$(($SOURCE_DELAY_FREQ*1000/$SOURCE_DELAY)) # every this many records
+			LATENCY_MEASURE_FREQ=$(($LOG_FREQ/5))
+			experiment latency2 $nodes $slots $DURATION
+			experiment latency2 $nodes $slots $DURATION
+			experiment latency2 $nodes $slots $DURATION
+		done
 	done
   done
 done
