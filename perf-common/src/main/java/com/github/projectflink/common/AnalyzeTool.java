@@ -38,8 +38,8 @@ public class AnalyzeTool {
 		String l;
 		Pattern latencyPattern = Pattern.compile(".*Latency ([0-9]+) ms.*");
 		Pattern throughputPattern = Pattern.compile(".*That's ([0-9.]+) elements\\/second\\/core.*");
-		Pattern hostPattern = Pattern.compile("Container: .* on (.+).c.astral-sorter-757..*");
-		Pattern stormHostPattern = Pattern.compile(".*Client environment:host.name=(.+).c.astral-sorter-757..*");
+		Pattern hostPattern = Pattern.compile("Container: .* on ([^.]+).*");
+		Pattern stormHostPattern = Pattern.compile(".*Client environment:host.name=([^.]+).*");
 
 		DescriptiveStatistics latencies = new DescriptiveStatistics();
 		SummaryStatistics throughputs = new SummaryStatistics();
