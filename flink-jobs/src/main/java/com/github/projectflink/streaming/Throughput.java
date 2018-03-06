@@ -81,14 +81,13 @@ public class Throughput {
 						try { Thread.sleep(delay); } catch (InterruptedException e) { e.printStackTrace();}
 					}
 				}
-//				// move the ID for the latency so that we distribute it among the machines.
-//				if(id % latFreq == nextlat) {
-//				if (id % latFreq == 0) {
+				// move the ID for the latency so that we distribute it among the machines.
+				if(id % latFreq == nextlat) {
 					time = System.currentTimeMillis();
-//					if(--nextlat <= 0) {
-//						nextlat = 1000;
-//					}
-//				}
+					if(--nextlat <= 0) {
+						nextlat = 1000;
+					}
+				}
 
 				sourceContext.collect(new Type(id++, host, time, payload));
 				time = 0;
@@ -126,8 +125,6 @@ public class Throughput {
 			see.enableCheckpointing(pt.getLong("ft"));
 		}
 
-		final int latFreq = pt.getInt("latencyFreq", DEFAULT_LATENCY_FREQUENCY);
-
 		DataStream<Type> source = see.addSource(new Source(pt) );
 
 		DataStream<Type> repartitioned = source.keyBy(0);
@@ -146,12 +143,10 @@ public class Throughput {
 
 			Integer host = null;
 			long received = 0;
-			long latency = 0;
 			long start = 0;
 			long logfreq = pt.getInt("logfreq", DEFAULT_LOG_FREQUENCY);
 			long lastLog = -1;
 			long lastElements = 0;
-			long lastLatency = 0;
 
 			@Override
 			public void flatMap(Type element, Collector<Integer> collector) throws Exception {
@@ -163,40 +158,33 @@ public class Throughput {
 				}
 
 				received++;
-				if (element.f2 != 0 /* && element.f1 == host */) {
-					latency += System.currentTimeMillis() - element.f2;
-				}
 				if (received % logfreq == 0) {
 					// throughput over entire time
 					long now = System.currentTimeMillis();
 					long sinceSec = ((now - start) / 1000);
 					if (sinceSec == 0) return;
-					LOG.info("Received {} elements since {}. Elements per second {}, GB received {}, average latency {} ms",
+					LOG.info("Received {} elements since {}. Elements per second {}, GB received {}",
 							received,
 							sinceSec,
 							received / sinceSec,
-							(received * (8 + 8 + 4 + pt.getInt("payload", DEFAULT_PAYLOAD_SIZE))) / 1024 / 1024 / 1024,
-							latency / received);
+							(received * (8 + 8 + 4 + pt.getInt("payload", DEFAULT_PAYLOAD_SIZE))) / 1024 / 1024 / 1024);
 
 					// throughput for the last "logfreq" elements
 					if(lastLog == -1) {
 						// init (the first)
 						lastLog = now;
 						lastElements = received;
-						lastLatency = latency;
 					} else {
 						long timeDiff = now - lastLog;
 						long elementDiff = received - lastElements;
-						long latencyDiff = latency - lastLatency;
 						double ex = (1000/(double)timeDiff);
-						LOG.info("During the last {} ms, we received {} elements. That's {} elements/second/core with an average latency of {} ms", timeDiff, elementDiff, elementDiff*ex, latencyDiff / elementDiff);
+						LOG.info("During the last {} ms, we received {} elements. That's {} elements/second/core", timeDiff, elementDiff, elementDiff*ex);
 						// reinit
 						lastLog = now;
 						lastElements = received;
-						lastLatency = latency;
 					}
 				}
-				if (element.f0 % latFreq == 0 /* && element.f1 == host */) {
+				if (element.f2 != 0 /* && element.f1.equals(host) */) {
 					long lat = System.currentTimeMillis() - element.f2;
 					LOG.info("Latency {} ms from machine " + element.f1, lat);
 				}
