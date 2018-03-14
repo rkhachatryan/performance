@@ -29,7 +29,7 @@ start_job() {
 	echo -n "$nodes;$slots;$REPART;$CHECKPOINTING_INTERVAL;$BUFFER_TIMEOUT;$SOURCE_DELAY;$SOURCE_DELAY_FREQ;$LATENCY_MEASURE_FREQ;$LOG_FREQ;$PAYLOAD_SIZE;" >> $LOG
 	echo "Starting job on YARN with $nodes workers and a buffer timeout of $BUFFER_TIMEOUT ms (source delay $SOURCE_DELAY)"
 	PARA=$(($1*$slots))
-	"${FLINK_BIN}" run -m yarn-cluster -yn $1 -yst -yD taskmanager.network.credit-based-flow-control.enabled=$CREDIT_BASED_ENABLED -yjm 768 -ytm 3072 -ys $slots -yd -p $PARA -c "$CLASS" "${JOB_JAR}" $CHECKPOINTING_INTERVAL --sleepFreq $SOURCE_DELAY_FREQ --repartitions $REPART --timeout $BUFFER_TIMEOUT --payload $PAYLOAD_SIZE --delay $SOURCE_DELAY --logfreq $LOG_FREQ --latencyFreq $LATENCY_MEASURE_FREQ | tee lastJobOutput
+	"${FLINK_BIN}" run -m yarn-cluster -yn $1 -yst -yD taskmanager.network.credit-based-flow-control.enabled=$CREDIT_BASED_ENABLED -yjm 768 -ytm 3072 -ys $slots -d -p $PARA -c "$CLASS" "${JOB_JAR}" $CHECKPOINTING_INTERVAL --sleepFreq $SOURCE_DELAY_FREQ --repartitions $REPART --timeout $BUFFER_TIMEOUT --payload $PAYLOAD_SIZE --delay $SOURCE_DELAY --logfreq $LOG_FREQ --latencyFreq $LATENCY_MEASURE_FREQ | tee lastJobOutput
 }
 
 append() {
