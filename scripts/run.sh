@@ -26,7 +26,7 @@ CHECKPOINTING_INTERVAL=""
 start_job() {
 	nodes=$1
 	slots=$2
-	echo -n "$nodes;$slots;$REPART;$CHECKPOINTING_INTERVAL;$BUFFER_TIMEOUT;$SOURCE_DELAY;$SOURCE_DELAY_FREQ;$LATENCY_MEASURE_FREQ;$LOG_FREQ;$PAYLOAD_SIZE;" >> $LOG
+	echo -n "$nodes;$slots;$REPART;$CHECKPOINTING_INTERVAL;$BUFFER_TIMEOUT;$SOURCE_DELAY;$SOURCE_DELAY_FREQ;$LATENCY_MEASURE_FREQ;$LOG_FREQ;$PAYLOAD_SIZE;$CREDIT_BASED_ENABLED;" >> $LOG
 	echo "Starting job on YARN with $nodes workers and a buffer timeout of $BUFFER_TIMEOUT ms (source delay $SOURCE_DELAY)"
 	PARA=$(($1*$slots))
 	"${FLINK_BIN}" run -m yarn-cluster -yn $1 -yst -yD taskmanager.network.credit-based-flow-control.enabled=$CREDIT_BASED_ENABLED -yjm 768 -ytm 3072 -ys $slots -d -p $PARA -c "$CLASS" "${JOB_JAR}" $CHECKPOINTING_INTERVAL --sleepFreq $SOURCE_DELAY_FREQ --repartitions $REPART --timeout $BUFFER_TIMEOUT --payload $PAYLOAD_SIZE --delay $SOURCE_DELAY --logfreq $LOG_FREQ --latencyFreq $LATENCY_MEASURE_FREQ | tee lastJobOutput
@@ -80,7 +80,7 @@ function experiment() {
 
 mkdir -p logs
 
-echo "machines;slots;repartitions;checkpointing_interval;buffer_timeout;source_delay;source_delay_freq;latency_measure_freq;log_freq;payload_size;duration-sec;jobId;machines_results;lat-mean;lat-median;lat-90percentile;lat-95percentile;lat-99percentile;throughput-mean;throughput-max;latencies;throughputs" >> $LOG
+echo "machines;slots;repartitions;checkpointing_interval;buffer_timeout;source_delay;source_delay_freq;latency_measure_freq;log_freq;payload_size;credit_based;duration-sec;jobId;machines_results;lat-mean;lat-median;lat-90percentile;lat-95percentile;lat-99percentile;throughput-mean;throughput-max;latencies;throughputs" >> $LOG
 
 # DURATION=900 # 15min
 DURATION=300 # 5min
