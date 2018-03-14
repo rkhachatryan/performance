@@ -140,7 +140,10 @@ public class Throughput {
 		}
 
 		if (pt.has("ft")) {
-			see.enableCheckpointing(pt.getLong("ft"));
+			long checkpointInterval = pt.getLong("ft");
+			if (checkpointInterval > 0) {
+				see.enableCheckpointing(checkpointInterval);
+			}
 		}
 
 		if (pt.has("maxParallelism")) {
