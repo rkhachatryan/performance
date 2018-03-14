@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import java.net.InetAddress;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class Throughput {
 
@@ -27,6 +28,7 @@ public class Throughput {
 	static final int DEFAULT_LATENCY_FREQUENCY = 1_000_000;
 	static final int DEFAULT_SLEEP_FREQUENCY = 0;
 	static final int DEFAULT_LOG_FREQUENCY = 1000;
+	enum ID_MODE { INCREASING, RANDOM };
 
 	public static class Type extends Tuple4<Long, // sequence number from generator instance
 			Integer,  // host ID on GCE
@@ -52,6 +54,14 @@ public class Throughput {
 		return host.hashCode();
 	}
 
+	private static ID_MODE getIdMode(ParameterTool pt) {
+		if (pt.has("idMode") && "random".equals(pt.get("idMode"))) {
+			return ID_MODE.RANDOM;
+		}
+		// default
+		return ID_MODE.INCREASING;
+	}
+
 	public static class Source extends RichParallelSourceFunction<Type> implements ListCheckpointed<Long> {
 		private static final long serialVersionUID = -9116320247501922636L;
 
@@ -74,6 +84,7 @@ public class Throughput {
 			int sleepFreq = pt.getInt("sleepFreq", DEFAULT_SLEEP_FREQUENCY);
 		//	String host = InetAddress.getLocalHost().getHostName();
 			int host = convertHostnameToInt(InetAddress.getLocalHost().getHostName());
+			final ID_MODE idMode = getIdMode(pt);
 
 			while(running) {
 				if(delay > 0) {
@@ -88,8 +99,15 @@ public class Throughput {
 						nextlat = 1000;
 					}
 				}
+				++id;
 
-				sourceContext.collect(new Type(id++, host, time, payload));
+
+				if (idMode == ID_MODE.RANDOM) {
+					sourceContext.collect(new Type(ThreadLocalRandom.current().nextLong(), host, time, payload));
+				} else {
+					sourceContext.collect(new Type(id, host, time, payload));
+				}
+
 				time = 0;
 			}
 		}
