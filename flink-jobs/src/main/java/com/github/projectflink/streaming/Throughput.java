@@ -117,12 +117,16 @@ public class Throughput {
 		see.getConfig().setGlobalJobParameters(pt);
 		see.setRestartStrategy(RestartStrategies.noRestart());
 
-		if(pt.has("timeout")) {
+		if (pt.has("timeout")) {
 			see.setBufferTimeout(pt.getLong("timeout"));
 		}
 
-		if(pt.has("ft")) {
+		if (pt.has("ft")) {
 			see.enableCheckpointing(pt.getLong("ft"));
+		}
+
+		if (pt.has("maxParallelism")) {
+			see.setMaxParallelism(pt.getInt("maxParallelism"));
 		}
 
 		DataStream<Type> source = see.addSource(new Source(pt) );
