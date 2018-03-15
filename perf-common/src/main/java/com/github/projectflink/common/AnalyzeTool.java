@@ -3,17 +3,18 @@ package com.github.projectflink.common;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
 
-import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.GZIPInputStream;
 
 public class AnalyzeTool {
 
@@ -32,8 +33,15 @@ public class AnalyzeTool {
 		}
 	}
 
-	public static Result analyze(String file, List<String> toIgnore) throws FileNotFoundException {
-		Scanner sc = new Scanner(new File(file));
+	public static Result analyze(String file, List<String> toIgnore) throws IOException {
+
+		final InputStream is;
+		if (file.endsWith(".gz")) {
+			is = new GZIPInputStream(new FileInputStream(file));
+		} else {
+			is = new FileInputStream(file);
+		}
+		BufferedReader br = new BufferedReader(new InputStreamReader(is, "UTF-8"));
 
 		String l;
 		Pattern latencyPattern = Pattern.compile(".*Latency ([0-9]+) ms.*");
@@ -47,8 +55,7 @@ public class AnalyzeTool {
 		Map<String, DescriptiveStatistics> perHostLat = new HashMap<String, DescriptiveStatistics>();
 		Map<String, SummaryStatistics> perHostThr = new HashMap<String, SummaryStatistics>();
 
-		while( sc.hasNextLine()) {
-			l = sc.nextLine();
+		while ((l = br.readLine()) != null) {
 			// ---------- host ---------------
 			Matcher hostMatcher = hostPattern.matcher(l);
 			if(hostMatcher.matches()) {
@@ -96,7 +103,7 @@ public class AnalyzeTool {
 		return new Result(latencies, throughputs, perHostLat, perHostThr);
 	}
 
-	public static void main(String[] args) throws FileNotFoundException {
+	public static void main(String[] args) throws IOException {
 		Result r1 = analyze(args[0], null);
 		DescriptiveStatistics latencies = r1.latencies;
 		SummaryStatistics throughputs = r1.throughputs;

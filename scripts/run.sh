@@ -57,12 +57,12 @@ getLogsFor() {
 	name=$1
 	appid=$2
 	sleep 30
-	yarn logs -applicationId $appid > logs/${RUNNAME}-${name}-${appid}
+	yarn logs -applicationId $appid |& gzip -c > logs/${RUNNAME}-${name}-${appid}.gz
 }
 analyzeLogs() {
 	name=$1
 	appid=$2
-	java -cp "${ANALYZE_JAR}" com.github.projectflink.common.AnalyzeTool logs/${RUNNAME}-${name}-${appid} >> ${LOG}
+	java -cp "${ANALYZE_JAR}" com.github.projectflink.common.AnalyzeTool logs/${RUNNAME}-${name}-${appid}.gz >> ${LOG}
 }
 
 function experiment() {
