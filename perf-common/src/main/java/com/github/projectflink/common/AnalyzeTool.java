@@ -17,6 +17,14 @@ import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
 public class AnalyzeTool {
+	/**
+	 * After first detection of NORMAL or STORM mode, skip trying to parse the other one.
+	 */
+	public enum HostDetectionMode {
+		UNKNOWN,
+		NORMAL,
+		STORM
+	}
 
 	public static class Result {
 
@@ -52,22 +60,12 @@ public class AnalyzeTool {
 		DescriptiveStatistics latencies = new DescriptiveStatistics();
 		SummaryStatistics throughputs = new SummaryStatistics();
 		String currentHost = null;
-		Map<String, DescriptiveStatistics> perHostLat = new HashMap<String, DescriptiveStatistics>();
-		Map<String, SummaryStatistics> perHostThr = new HashMap<String, SummaryStatistics>();
+		Map<String, DescriptiveStatistics> perHostLat = new HashMap<>();
+		Map<String, SummaryStatistics> perHostThr = new HashMap<>();
+		HostDetectionMode hostDetectionModeMode = HostDetectionMode.UNKNOWN;
 
 		while ((l = br.readLine()) != null) {
-			// ---------- host ---------------
-			Matcher hostMatcher = hostPattern.matcher(l);
-			if(hostMatcher.matches()) {
-				currentHost = hostMatcher.group(1);
-				System.err.println("Setting host to "+currentHost);
-			}
-			Matcher stormHostMatcher = stormHostPattern.matcher(l);
-			if(stormHostMatcher.matches()) {
-				currentHost = stormHostMatcher.group(1);
-				System.err.println("Setting host to "+currentHost+ " (storm)");
-			}
-
+			// Due to performance reason, first parse lines that are the most likely to occur.
 			// ---------- latency ---------------
 			Matcher latencyMatcher = latencyPattern.matcher(l);
 			if(latencyMatcher.matches()) {
@@ -80,6 +78,7 @@ public class AnalyzeTool {
 					perHostLat.put(currentHost, perHost);
 				}
 				perHost.addValue(latency);
+				continue;
 			}
 
 			// ---------- throughput ---------------
@@ -95,6 +94,28 @@ public class AnalyzeTool {
 					perHostThr.put(currentHost, perHost);
 				}
 				perHost.addValue(eps);
+				continue;
+			}
+
+			// ---------- host ---------------
+			if (hostDetectionModeMode != HostDetectionMode.STORM) {
+				Matcher hostMatcher = hostPattern.matcher(l);
+				if (hostMatcher.matches()) {
+					currentHost = hostMatcher.group(1);
+					System.err.println("Setting host to " + currentHost);
+					hostDetectionModeMode = HostDetectionMode.NORMAL;
+					continue;
+				}
+			}
+
+			if (hostDetectionModeMode != HostDetectionMode.NORMAL) {
+				Matcher stormHostMatcher = stormHostPattern.matcher(l);
+				if (stormHostMatcher.matches()) {
+					currentHost = stormHostMatcher.group(1);
+					System.err.println("Setting host to " + currentHost + " (storm)");
+					hostDetectionModeMode = HostDetectionMode.STORM;
+					continue;
+				}
 			}
 		}
 
