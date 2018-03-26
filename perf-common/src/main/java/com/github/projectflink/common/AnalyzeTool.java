@@ -33,7 +33,7 @@ public class AnalyzeTool {
 		}
 	}
 
-	public static Result analyze(String file, List<String> toIgnore) throws IOException {
+	public static Result analyze(String file) throws IOException {
 
 		final InputStream is;
 		if (file.endsWith(".gz")) {
@@ -67,8 +67,6 @@ public class AnalyzeTool {
 				currentHost = stormHostMatcher.group(1);
 				System.err.println("Setting host to "+currentHost+ " (storm)");
 			}
-
-			if(toIgnore != null && toIgnore.contains(currentHost)) continue;
 
 			// ---------- latency ---------------
 			Matcher latencyMatcher = latencyPattern.matcher(l);
@@ -104,7 +102,7 @@ public class AnalyzeTool {
 	}
 
 	public static void main(String[] args) throws IOException {
-		Result r1 = analyze(args[0], null);
+		Result r1 = analyze(args[0]);
 		DescriptiveStatistics latencies = r1.latencies;
 		SummaryStatistics throughputs = r1.throughputs;
 		// System.out.println("lat-mean;lat-median;lat-90percentile;lat-95percentile;lat-99percentile;throughput-mean;throughput-max;latencies;throughputs;");
@@ -125,35 +123,5 @@ public class AnalyzeTool {
 			System.err.println("====== "+entry.getKey()+" (entries: "+entry.getValue().getN()+")=======");
 			System.err.println("Mean throughput " + entry.getValue().getMean());
 		}
-
-		// report statistics for all machines but with the two highest mean latency machines removed:
-
-//		Collections.sort(orderedPerHostLatency, new Comparator<Map.Entry<String, DescriptiveStatistics>>() {
-//			@Override
-//			public int compare(Map.Entry<String, DescriptiveStatistics> o1, Map.Entry<String, DescriptiveStatistics> o2) {
-//				if (o1.getValue().getMean() < o2.getValue().getMean()) {
-//					return 1;
-//				} else {
-//					return -1;
-//				}
-//			}
-//		});
-//
-//		List<Map.Entry<String, DescriptiveStatistics>> statsToIgnore = orderedPerHostLatency.subList(0, 2);
-//		List<String> toIgnore = new ArrayList<String>();
-//		System.err.println("============= HOSTS TO IGNORE (num: "+statsToIgnore.size()+") ============== ");
-//		for(Map.Entry<String, DescriptiveStatistics> entry : statsToIgnore) {
-//			System.err.println("====== "+entry.getKey()+" (entries: "+entry.getValue().getN()+") =======");
-//			System.err.println("Mean latency " + entry.getValue().getMean());
-//			System.err.println("Median latency " + entry.getValue().getPercentile(50));
-//			toIgnore.add(entry.getKey());
-//		}
-//
-//		Result finalResult = analyze(args[0], toIgnore);
-//		latencies = finalResult.latencies;
-//		throughputs = finalResult.throughputs;
-//
-//		System.out.println("-2-machines;;;;;;;;;;;;;;" + latencies.getMean() + ";" + latencies.getPercentile(50) + ";" + latencies.getPercentile(90) + ";" + latencies.getPercentile(95) + ";" + latencies.getPercentile(99)+ ";" + throughputs.getMean() + ";" + throughputs.getMax() + ";" + latencies.getN() + ";" + throughputs.getN());
-
 	}
 }
