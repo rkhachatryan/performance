@@ -14,13 +14,13 @@ public class AnalyzeToolTest {
 	public void analyzeLogFile() throws IOException {
 		Result result = AnalyzeTool.analyze("src/test/resources/example-log.gz");
 
-		assertEquals(1111726.308427559, result.throughputs.getMean(), EPSILON);
-		assertEquals(7142857.142857143, result.throughputs.getMax(), EPSILON);
-		assertEquals(23653, result.throughputs.getN());
+		assertEquals(385927.23443877226, result.throughputs.getMean(), EPSILON);
+		assertEquals(4545454.545454545, result.throughputs.getMax(), EPSILON);
+		assertEquals(55437, result.throughputs.getN());
 
-		assertEquals(10585.502395920254, result.latencies.getMean(), EPSILON);
+		assertEquals(3290.572362395614, result.latencies.getMean(), EPSILON);
 
-		assertEquals(4, result.perHostLatancies.size());
-		assertEquals(4, result.perHostThroughputs.size());
+		assertEquals(10, result.perHostLatancies.size());
+		assertEquals(10, result.perHostThroughputs.size());
 	}
 }
