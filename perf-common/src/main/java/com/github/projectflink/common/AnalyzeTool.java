@@ -27,20 +27,23 @@ public class AnalyzeTool {
 
 	public static class Result {
 
-		DescriptiveStatistics latencies;
-		ThroughputMean throughputs;
-		Map<String, DescriptiveStatistics> perHostLatancies;
-		Map<String, ThroughputMean> perHostThroughputs;
+		final DescriptiveStatistics latencies;
+		final ThroughputMean throughputs;
+		final Map<String, DescriptiveStatistics> perHostLatancies;
+		final Map<String, ThroughputMean> perHostThroughputs;
+		final DescriptiveStatistics checkpointDurations;
 
 		public Result(
 				DescriptiveStatistics latencies,
 				ThroughputMean throughputs,
 				Map<String, DescriptiveStatistics> perHostLatancies,
-				Map<String, ThroughputMean> perHostThroughputs) {
+				Map<String, ThroughputMean> perHostThroughputs,
+				DescriptiveStatistics checkpointDurations) {
 			this.latencies = latencies;
 			this.throughputs = throughputs;
 			this.perHostLatancies = perHostLatancies;
 			this.perHostThroughputs = perHostThroughputs;
+			this.checkpointDurations = checkpointDurations;
 		}
 	}
 
@@ -59,9 +62,11 @@ public class AnalyzeTool {
 		Pattern throughputPattern = Pattern.compile(".*we received ([0-9]+) elements. That's ([0-9.]+) elements\\/second\\/core.*");
 		Pattern hostPattern = Pattern.compile("Container: .* on ([^.]+).*");
 		Pattern stormHostPattern = Pattern.compile(".*Client environment:host.name=([^.]+).*");
+		Pattern checkpointPattern = Pattern.compile(".*Completed checkpoint [0-9]+ \\([0-9]+ bytes in ([0-9]+) ms.*");
 
 		DescriptiveStatistics latencies = new DescriptiveStatistics();
 		ThroughputMean throughputs = new ThroughputMean();
+		DescriptiveStatistics checkpointDurations = new DescriptiveStatistics();
 		String currentHost = null;
 		Map<String, DescriptiveStatistics> perHostLat = new HashMap<>();
 		Map<String, ThroughputMean> perHostThroughputs = new HashMap<>();
@@ -105,6 +110,13 @@ public class AnalyzeTool {
 				continue;
 			}
 
+			Matcher checkpointMatcher = checkpointPattern.matcher(l);
+			if (checkpointMatcher.matches()) {
+				long duration = Long.valueOf(checkpointMatcher.group(1));
+				checkpointDurations.addValue(duration);
+				continue;
+			}
+
 			// ---------- host ---------------
 			if (hostDetectionModeMode != HostDetectionMode.STORM) {
 				Matcher hostMatcher = hostPattern.matcher(l);
@@ -127,15 +139,26 @@ public class AnalyzeTool {
 			}
 		}
 
-		return new Result(latencies, throughputs, perHostLat, perHostThroughputs);
+		return new Result(latencies, throughputs, perHostLat, perHostThroughputs, checkpointDurations);
 	}
 
 	public static void main(String[] args) throws IOException {
 		Result r1 = analyze(args[0]);
 		DescriptiveStatistics latencies = r1.latencies;
 		ThroughputMean throughputs = r1.throughputs;
-		// System.out.println("lat-mean;lat-median;lat-90percentile;lat-95percentile;lat-99percentile;throughput-mean;throughput-max;latencies;throughputs;");
-		System.out.println("all-machines;" + latencies.getMean() + ";" + latencies.getPercentile(50) + ";" + latencies.getPercentile(90) + ";" + latencies.getPercentile(95) + ";" + latencies.getPercentile(99)+ ";" + throughputs.getMean() + ";" + throughputs.getMax() + ";" + latencies.getN() + ";" + throughputs.getN());
+		DescriptiveStatistics checkpointDurations = r1.checkpointDurations;
+		System.out.println("all-machines;" +
+				latencies.getMean() + ";" +
+				latencies.getPercentile(50) + ";" +
+				latencies.getPercentile(90) + ";" +
+				latencies.getPercentile(95) + ";" +
+				latencies.getPercentile(99)+ ";" +
+				throughputs.getMean() + ";" +
+				throughputs.getMax() + ";" +
+				latencies.getN() + ";" +
+				throughputs.getN() + ";" +
+				checkpointDurations.getPercentile(50) + ";" +
+				checkpointDurations.getPercentile(99));
 
 		System.err.println("================= Latency (" + r1.perHostLatancies.size() + " reports ) =====================");
 		List<Map.Entry<String, DescriptiveStatistics>> orderedPerHostLatency = new ArrayList<Map.Entry<String, DescriptiveStatistics>>();

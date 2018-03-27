@@ -22,5 +22,8 @@ public class AnalyzeToolTest {
 
 		assertEquals(10, result.perHostLatancies.size());
 		assertEquals(10, result.perHostThroughputs.size());
+
+		assertEquals(4785, result.checkpointDurations.getPercentile(50), EPSILON);
+		assertEquals(6220, result.checkpointDurations.getPercentile(99), EPSILON);
 	}
 }

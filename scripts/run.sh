@@ -80,7 +80,7 @@ function experiment() {
 
 mkdir -p logs
 
-echo "machines;slots;repartitions;checkpointing_interval;buffer_timeout;source_delay;source_delay_freq;latency_measure_freq;log_freq;payload_size;credit_based;duration-sec;jobId;machines_results;lat-mean;lat-median;lat-90percentile;lat-95percentile;lat-99percentile;throughput-mean;throughput-max;latencies;throughputs" >> $LOG
+echo "machines;slots;repartitions;checkpointing_interval;buffer_timeout;source_delay;source_delay_freq;latency_measure_freq;log_freq;payload_size;credit_based;duration-sec;jobId;machines_results;lat-mean;lat-median;lat-90percentile;lat-95percentile;lat-99percentile;throughput-mean;throughput-max;latencies;throughputs;checkpoint-duration-median;checkpoint-duration-99percentile" >> $LOG
 
 # DURATION=900 # 15min
 DURATION=300 # 5min
