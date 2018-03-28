@@ -86,7 +86,6 @@ echo "machines;slots;repartitions;checkpointing_interval;buffer_timeout;source_d
 DURATION=180 # 3min
 
 #redo throughput tests
-REPART=1 # only one re-partitioning via a (hashing) key-by
 
 for CHECKPOINTING_INTERVAL in $CHECKPOINTING_INTERVALS; do
 	for BUFFER_TIMEOUT in $BUFFER_TIMEOUTS_THROUGHPUT; do
