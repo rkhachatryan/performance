@@ -62,7 +62,7 @@ public class AnalyzeTool {
 		Pattern throughputPattern = Pattern.compile(".*we received ([0-9]+) elements. That's ([0-9.]+) elements\\/second\\/core.*");
 		Pattern hostPattern = Pattern.compile("Container: .* on ([^.]+).*");
 		Pattern stormHostPattern = Pattern.compile(".*Client environment:host.name=([^.]+).*");
-		Pattern checkpointPattern = Pattern.compile(".*Completed checkpoint [0-9]+ \\([0-9]+ bytes in ([0-9]+) ms.*");
+		Pattern checkpointPattern = Pattern.compile(".*Completed checkpoint [0-9]+.*\\([0-9]+ bytes in ([0-9]+) ms.*");
 
 		DescriptiveStatistics latencies = new DescriptiveStatistics();
 		ThroughputMean throughputs = new ThroughputMean();
