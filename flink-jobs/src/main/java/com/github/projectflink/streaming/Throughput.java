@@ -148,24 +148,26 @@ public class Throughput {
 			see.setMaxParallelism(pt.getInt("maxParallelism"));
 		}
 
-		DataStream<Type> source = see.addSource(new Source(pt) );
+		DataStream<Type> dataStream = see.addSource(new Source(pt) );
 
-		DataStream<Type> repartitioned = source.keyBy(0);
-		for(int i = 0; i < pt.getInt("repartitions", 1) - 1;i++) {
-			repartitioned = repartitioned.map(new MapFunction<Type, Type>() {
-				@Override
-				public Type map(Type in) throws Exception {
-					Type out = in.copy();
-					out.f0++;
-					return out;
-				}
-			}).keyBy(0);
+		int repartitions = pt.getInt("repartitions", 1);
+		for(int i = 0; i < repartitions - 1; i++) {
+			dataStream = dataStream.keyBy(0).map(new IncrementMapFunction());
 		}
-		repartitioned.flatMap(new ThroughputMeasuringFlatMap(
+
+		dataStream.keyBy(0).flatMap(new ThroughputMeasuringFlatMap(
 				8 + 8 + 4 + pt.getInt("payload", DEFAULT_PAYLOAD_SIZE),
 				pt.getInt("logfreq", DEFAULT_LOG_FREQUENCY)));
 		//System.out.println("plan = "+see.getExecutionPlan());;
 		see.execute("Flink Throughput Job with: "+pt.toMap());
 	}
 
+	public static class IncrementMapFunction implements MapFunction<Type, Type> {
+		@Override
+		public Type map(Type in) throws Exception {
+			Type out = in.copy();
+			out.f0++;
+			return out;
+		}
+	}
 }
