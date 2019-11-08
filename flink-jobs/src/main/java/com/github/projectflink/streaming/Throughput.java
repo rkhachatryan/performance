@@ -21,6 +21,8 @@ public class Throughput {
 
 	private static final Logger LOG = LoggerFactory.getLogger(Throughput.class);
 
+	static final String THROTTLING_SLEEP_PARAM = "throttlingSleep";
+
 	static final int DEFAULT_PAYLOAD_SIZE = 12;
 	static final int DEFAULT_DELAY = 0;
 	static final int DEFAULT_LATENCY_FREQUENCY = 1_000_000;
@@ -148,6 +150,17 @@ public class Throughput {
 			see.setMaxParallelism(pt.getInt("maxParallelism"));
 		}
 
+		int logfreq = pt.getInt("logfreq", DEFAULT_LOG_FREQUENCY);
+		long throttlingSleepMilis = 0;
+		if (pt.has(THROTTLING_SLEEP_PARAM)) {
+			throttlingSleepMilis = pt.getLong(THROTTLING_SLEEP_PARAM);
+		}
+		if (throttlingSleepMilis > 0) {
+			long targetLogFrequencyMilis = 1000;
+			logfreq = (int) (targetLogFrequencyMilis / throttlingSleepMilis);
+			LOG.info("Overriding logfreq with value [{}] based on the configured {} to log once every second.", logfreq, THROTTLING_SLEEP_PARAM);
+		}
+
 		DataStream<Type> dataStream = see.addSource(new Source(pt) );
 
 		int repartitions = pt.getInt("repartitions", 1);
@@ -155,10 +168,13 @@ public class Throughput {
 			dataStream = dataStream.keyBy(0).map(new IncrementMapFunction());
 		}
 
-		dataStream.keyBy(0).flatMap(new ThroughputMeasuringFlatMap(
+		dataStream = dataStream.keyBy(0);
+		if (throttlingSleepMilis > 0) {
+			dataStream = dataStream.map(new ThroughputThrottlingMapper(throttlingSleepMilis));
+		}
+		dataStream.flatMap(new ThroughputMeasuringFlatMap(
 				8 + 8 + 4 + pt.getInt("payload", DEFAULT_PAYLOAD_SIZE),
-				pt.getInt("logfreq", DEFAULT_LOG_FREQUENCY)));
-		//System.out.println("plan = "+see.getExecutionPlan());;
+				logfreq));
 		see.execute("Flink Throughput Job with: "+pt.toMap());
 	}
 
@@ -168,6 +184,20 @@ public class Throughput {
 			Type out = in.copy();
 			out.f0++;
 			return out;
+		}
+	}
+
+	public static class ThroughputThrottlingMapper<T> implements MapFunction<T, T> {
+		private final long sleepMilis;
+
+		public ThroughputThrottlingMapper(long sleepMilis) {
+			this.sleepMilis = sleepMilis;
+		}
+
+		@Override
+		public T map(T t) throws Exception {
+			Thread.sleep(sleepMilis);
+			return t;
 		}
 	}
 }
