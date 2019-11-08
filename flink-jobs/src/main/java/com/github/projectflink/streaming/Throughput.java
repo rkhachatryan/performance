@@ -22,6 +22,7 @@ public class Throughput {
 	private static final Logger LOG = LoggerFactory.getLogger(Throughput.class);
 
 	static final String THROTTLING_SLEEP_PARAM = "throttlingSleep";
+	static final double EPSILON = 0.00001;
 
 	static final int DEFAULT_PAYLOAD_SIZE = 12;
 	static final int DEFAULT_DELAY = 0;
@@ -151,12 +152,12 @@ public class Throughput {
 		}
 
 		int logfreq = pt.getInt("logfreq", DEFAULT_LOG_FREQUENCY);
-		long throttlingSleepMilis = 0;
+		double throttlingSleepMilis = 0;
 		if (pt.has(THROTTLING_SLEEP_PARAM)) {
-			throttlingSleepMilis = pt.getLong(THROTTLING_SLEEP_PARAM);
+			throttlingSleepMilis = pt.getDouble(THROTTLING_SLEEP_PARAM);
 		}
-		if (throttlingSleepMilis > 0) {
-			long targetLogFrequencyMilis = 1000;
+		if (throttlingSleepMilis > EPSILON) {
+			double targetLogFrequencyMilis = 1000;
 			logfreq = (int) (targetLogFrequencyMilis / throttlingSleepMilis);
 			LOG.info("Overriding logfreq with value [{}] based on the configured {} to log once every second.", logfreq, THROTTLING_SLEEP_PARAM);
 		}
@@ -189,14 +190,26 @@ public class Throughput {
 
 	public static class ThroughputThrottlingMapper<T> implements MapFunction<T, T> {
 		private final long sleepMilis;
+		private final long sleepFrequency;
 
-		public ThroughputThrottlingMapper(long sleepMilis) {
-			this.sleepMilis = sleepMilis;
+		private long counter = 0;
+
+		public ThroughputThrottlingMapper(double sleepMilis) {
+			if (sleepMilis >= 1.0) {
+				sleepFrequency = 1;
+				this.sleepMilis = Math.round(sleepMilis);
+			}
+			else {
+				this.sleepMilis = 1;
+				sleepFrequency = Math.round(1.0 / sleepMilis);
+			}
 		}
 
 		@Override
 		public T map(T t) throws Exception {
-			Thread.sleep(sleepMilis);
+			if (counter++ % sleepFrequency == 0) {
+				Thread.sleep(sleepMilis);
+			}
 			return t;
 		}
 	}
