@@ -1,5 +1,8 @@
 #!/bin/bash
 
+set -e
+set -o pipefail
+
 RUNNAME=$1
 FLINK_BIN=${2:-flink}
 JOB_JAR=${3:-flink-jobs-0.1-SNAPSHOT.jar}
