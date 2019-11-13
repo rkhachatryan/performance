@@ -20,7 +20,7 @@
 
   <parent>
     <groupId>com.github.project-flink</groupId>
-    <version>0.1-SNAPSHOT</version>
+    <version>0.2-SNAPSHOT</version>
     <artifactId>flink-perf</artifactId>
     <relativePath>..</relativePath>
   </parent>
@@ -79,7 +79,7 @@
       <dependency>
           <groupId>com.github.project-flink</groupId>
           <artifactId>flink-jobs</artifactId>
-          <version>0.1-SNAPSHOT</version>
+          <version>0.2-SNAPSHOT</version>
       </dependency>
       <dependency>
           <groupId>org.apache.flink</groupId>
