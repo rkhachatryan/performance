@@ -2,8 +2,13 @@ package com.github.projectflink.streaming;
 
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
+import org.apache.flink.api.common.state.ListState;
+import org.apache.flink.api.common.state.ListStateDescriptor;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.api.java.utils.ParameterTool;
+import org.apache.flink.runtime.state.FunctionInitializationContext;
+import org.apache.flink.runtime.state.FunctionSnapshotContext;
+import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction;
 import org.apache.flink.streaming.api.checkpoint.ListCheckpointed;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -15,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import java.net.InetAddress;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class Throughput {
@@ -29,6 +35,8 @@ public class Throughput {
 	static final int DEFAULT_LATENCY_FREQUENCY = 1_000_000;
 	static final int DEFAULT_SLEEP_FREQUENCY = 0;
 	static final int DEFAULT_LOG_FREQUENCY = 1000;
+	static final String STATE_SIZE = "stateSize";
+
 	enum ID_MODE { INCREASING, RANDOM };
 
 	public static class Type extends Tuple4<Long, // sequence number from generator instance
@@ -165,36 +173,63 @@ public class Throughput {
 		DataStream<Type> dataStream = see.addSource(new Source(pt) );
 
 		int repartitions = pt.getInt("repartitions", 1);
+		final int stateSize = pt.getInt(STATE_SIZE, 0);
 		for(int i = 0; i < repartitions - 1; i++) {
-			dataStream = dataStream.keyBy(0).map(new IncrementMapFunction());
+			dataStream = dataStream.keyBy(0).map(new IncrementMapFunction(stateSize));
 		}
 
 		dataStream = dataStream.keyBy(0);
 		if (throttlingSleepMilis > 0) {
-			dataStream = dataStream.map(new ThroughputThrottlingMapper(throttlingSleepMilis));
+			dataStream = dataStream.map(new ThroughputThrottlingMapper(throttlingSleepMilis, stateSize));
 		}
 		dataStream.flatMap(new ThroughputMeasuringFlatMap(
 				8 + 8 + 4 + pt.getInt("payload", DEFAULT_PAYLOAD_SIZE),
-				logfreq));
+				logfreq, stateSize));
 		see.execute("Flink Throughput Job with: "+pt.toMap());
 	}
 
-	public static class IncrementMapFunction implements MapFunction<Type, Type> {
+	public static class IncrementMapFunction implements MapFunction<Type, Type>, CheckpointedFunction {
+		private final int stateSize;
+		private transient byte[] state;
+		private transient ListState<byte[]> stateHandle;
+		private transient Random random;
+
+		public IncrementMapFunction(int stateSize) {
+			this.stateSize = stateSize;
+		}
+
 		@Override
 		public Type map(Type in) throws Exception {
 			Type out = in.copy();
 			out.f0++;
 			return out;
 		}
+
+		@Override
+		public void initializeState(FunctionInitializationContext ctx) throws Exception {
+			state = new byte[stateSize];
+			random = new Random();
+			stateHandle = Throughput.readState(ctx, stateSize, "ThroughputMeasuringFlatMap");
+		}
+
+		@Override
+		public void snapshotState(FunctionSnapshotContext ctx) throws Exception {
+			writeState(state, stateHandle, random);
+		}
+
 	}
 
-	public static class ThroughputThrottlingMapper<T> implements MapFunction<T, T> {
+	public static class ThroughputThrottlingMapper<T> implements MapFunction<T, T>, CheckpointedFunction {
 		private final long sleepMilis;
 		private final long sleepFrequency;
+		private final int stateSize;
 
 		private long counter = 0;
+		private transient byte[] state;
+		private transient ListState<byte[]> stateHandle;
+		private transient Random random;
 
-		public ThroughputThrottlingMapper(double sleepMilis) {
+		public ThroughputThrottlingMapper(double sleepMilis, int stateSize) {
 			if (sleepMilis >= 1.0) {
 				sleepFrequency = 1;
 				this.sleepMilis = Math.round(sleepMilis);
@@ -203,6 +238,7 @@ public class Throughput {
 				this.sleepMilis = 1;
 				sleepFrequency = Math.round(1.0 / sleepMilis);
 			}
+			this.stateSize = stateSize;
 		}
 
 		@Override
@@ -212,5 +248,31 @@ public class Throughput {
 			}
 			return t;
 		}
+
+		@Override
+		public void initializeState(FunctionInitializationContext ctx) throws Exception {
+			state = new byte[stateSize];
+			random = new Random();
+			stateHandle = readState(ctx, state.length, "ThroughputThrottlingMapper");
+		}
+
+		@Override
+		public void snapshotState(FunctionSnapshotContext ctx) throws Exception {
+			writeState(state, stateHandle, random);
+		}
+
 	}
+
+	static void writeState(byte[] state, ListState<byte[]> handle, Random random) throws Exception {
+		if (state.length > 0) {
+			random.nextBytes(state);
+			handle.update(Collections.singletonList(state));
+		}
+	}
+
+	static ListState<byte[]> readState(FunctionInitializationContext ctx, int size, String name) throws Exception {
+		LOG.info("state {} size {}", name, size);
+		return size == 0 ? null : ctx.getOperatorStateStore().getListState(new ListStateDescriptor<>(name, byte[].class));
+	}
+
 }

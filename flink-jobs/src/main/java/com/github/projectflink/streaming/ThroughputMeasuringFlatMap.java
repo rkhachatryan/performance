@@ -1,6 +1,10 @@
 package com.github.projectflink.streaming;
 
 import org.apache.flink.api.common.functions.FlatMapFunction;
+import org.apache.flink.api.common.state.ListState;
+import org.apache.flink.runtime.state.FunctionInitializationContext;
+import org.apache.flink.runtime.state.FunctionSnapshotContext;
+import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction;
 import org.apache.flink.util.Collector;
 
 import com.github.projectflink.streaming.Throughput.Type;
@@ -8,24 +12,30 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
+import java.util.Random;
 
-class ThroughputMeasuringFlatMap implements FlatMapFunction<Type, Integer> {
+class ThroughputMeasuringFlatMap implements FlatMapFunction<Type, Integer>, CheckpointedFunction {
 	private static final Logger LOG = LoggerFactory.getLogger(ThroughputMeasuringFlatMap.class);
 
 	private static final long serialVersionUID = -4881110695631095859L;
 
 	private final int bytesPerMessage;
 	private final long logfreq;
+	private final int stateSize;
 
 	private Integer host;
 	private long received;
 	private long start;
 	private long lastLog = -1;
 	private long lastElements;
+	private transient byte[] state;
+	private transient ListState<byte[]> stateHandle;
+	private transient Random random;
 
-	public ThroughputMeasuringFlatMap(int bytesPerMessage, long logfreq) {
+	public ThroughputMeasuringFlatMap(int bytesPerMessage, long logfreq, int stateSize) {
 		this.bytesPerMessage = bytesPerMessage;
 		this.logfreq = logfreq;
+		this.stateSize = stateSize;
 	}
 
 	@Override
@@ -68,5 +78,17 @@ class ThroughputMeasuringFlatMap implements FlatMapFunction<Type, Integer> {
 			long lat = System.currentTimeMillis() - element.f2;
 			LOG.info("Latency {} ms from machine " + element.f1, lat);
 		}
+	}
+
+	@Override
+	public void snapshotState(FunctionSnapshotContext ctx) throws Exception {
+		Throughput.writeState(state, stateHandle, random);
+	}
+
+	@Override
+	public void initializeState(FunctionInitializationContext ctx) throws Exception {
+		state = new byte[stateSize];
+		random = new Random();
+		stateHandle = Throughput.readState(ctx, stateSize, "ThroughputMeasuringFlatMap");
 	}
 }
